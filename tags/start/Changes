@@ -1,0 +1,33 @@
+Revision history for Perl extension Proc::PID::File.
+
+
+0.05 Wed Jan 23 01:09:28 2002
+	- remove mtime stuff
+	- interface change, now non-OO
+
+0.04 Thu Jan 10 21:08:34 2002
+	- instead of $pid->active only returning 1 for true, it will simply
+	  return the pid of the active process. Since the pid will never be 0,
+	  active will still be true and work as documented. (thanks to Paul
+	  Baker)
+
+0.03 Wed May 23 01:23:40 2001
+	- make the module work under -T (HASANT)
+	- make the module work with forking servers -- child processes's DESTROY
+	  now won't delete the pid file (Brad Hilton)
+
+0.021 Mon Oct 30 20:49:20 2000
+	- change method of getting file's age from -M to stat() because -M
+	  returns a negative number on Solaris for files < 1 day old (reported
+	  by Tom Leoboldt)
+
+0.02  Wed Sep  6 17:24:52 2000
+	- interface change
+	- added a test suite
+
+0.011 Thu Aug 03 06:40:00 2000
+	- package wrapping fix (The tarball had been wrapped incorrectly.  All
+	  of the files in Proc-PID_File-0.01/Proc/ should be at the top level)
+
+0.01  Mon Jul 31 06:59:56 2000
+	- original version; created by h2xs 1.19
