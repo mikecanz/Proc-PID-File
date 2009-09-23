@@ -175,6 +175,10 @@ sub debug {
 sub DESTROY {
 	my $self = shift;
 
+    if (exists($INC{'threads.pm'})){
+        return if (threads->tid() != 0);
+    }
+    
     open(PID, $self->{path})
 		|| die qq/Cannot open pid file "$self->{path}": $!\n/
         ;

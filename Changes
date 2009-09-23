@@ -1,4 +1,7 @@
 Revision history for Perl extension Proc::PID::File.
+1.25 2009/06/29 17:41:00
+    - Added support for threads.
+    - Added test for thread support.
 
 1.24 04/04/07 19:26:32 - ekkis
     - removed OO and procedural interfaces, leaving only the

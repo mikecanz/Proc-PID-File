@@ -32,7 +32,8 @@ use lib "blib/lib";
 $|++; $\ = "\n";
 
 use Proc::PID::File;
-use Test::Simple tests => 7;
+use Test::Simple tests => 8;
+use threads;
 
 my %args = ( name => "test", dir => ".", debug => $ENV{DEBUG} );
 my $cmd = shift || "";
@@ -46,6 +47,12 @@ if ($cmd eq "--daemon") {
 exit() if $cmd eq "--short";
 
 ok(1, 'use Proc::PID::File'); # If we made it this far, we're ok.
+
+# test for thread safety
+Proc::PID::File->running(%args);
+threads->create(sub { })->join();
+sleep(2);
+ok(-f "test.pid", "thread safe");
 
 unlink("test.pid") || die $! if -e "test.pid";  # blank slate
 system qq|$^X $0 --daemon > /dev/null 2>&1 &|; sleep 1;
