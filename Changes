@@ -1,5 +1,5 @@
 Revision history for Perl extension Proc::PID::File.
-1.25 2009/06/29 17:41:00
+1.25 2009/06/29 17:41:00 - Mike Canzoneri <mikecanzoneri@gmail.com>
     - Added support for threads.
     - Added test for thread support.
 
