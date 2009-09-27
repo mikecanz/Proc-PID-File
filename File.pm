@@ -28,6 +28,12 @@ Proc::PID::File - a module to manage process id files
   use Proc::PID::File;
   die "Already running!" if Proc::PID::File->running();
 
+For daemonization, something like this is recommended:
+
+  Proc::Daemon::Init;
+  my $pf = Proc::PID::File->new(dir => $RUNDIR);
+  die "Already running!" if $pf->alive();
+
 =head1 DESCRIPTION
 
 This Perl module is useful for writers of daemons and other processes that need to tell whether they are already running, in order to prevent multiple process instances.  The module accomplishes this via *nix-style I<pidfiles>, which are files that store a process identifier.
@@ -38,7 +44,7 @@ use strict;
 use vars qw($VERSION $RPM_Requires);
 use Fcntl qw(:DEFAULT :flock);
 
-$VERSION = "1.25";
+$VERSION = "1.26";
 $RPM_Requires = "procps";
 
 my $RUNDIR = "/var/run";
@@ -168,16 +174,16 @@ sub debug {
 	my $self = shift;
 	my $msg = shift || $_;
 
-	print "> Proc::PID::File - $msg"
+	print "> Proc::PID::File - $msg$\"
 		if $self->{debug};
 	}
 
 sub DESTROY {
 	my $self = shift;
 
-    if (exists($INC{'threads.pm'})){
-        return if (threads->tid() != 0);
-    }
+    if (exists($INC{'threads.pm'})) {
+        return if threads->tid() != 0;
+    	}
     
     open(PID, $self->{path})
 		|| die qq/Cannot open pid file "$self->{path}": $!\n/
