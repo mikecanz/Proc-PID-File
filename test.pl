@@ -49,14 +49,19 @@ exit() if $cmd eq "--short";
 ###
 # test for thread safety
 ###
-if ($Config{usethreads}) {
-    use threads;
-    Proc::PID::File->running(%args);
-    threads->create(sub { })->join();
-    sleep(2);
-    ok(-f "test.pid", "thread safe");
-} else {
-    ok(1, "Skipping Thread Safe Test");
+BEGIN {
+    unless ( $] >= 5.008001 && $Config{'useithreads'} &&
+             eval { 
+                require threads; 
+                my %args = ( name => "test", dir => ".", debug => $ENV{DEBUG} );
+                Proc::PID::File->running(%args);
+                threads->create(sub { })->join();
+                sleep(2);
+                ok(-f "test.pid", "thread safe");
+             })
+    {
+        ok(1, "Skipping Thread Safe Test");
+    }
 }
 
 
@@ -96,6 +101,7 @@ sleep 1 while kill 0, $pid;
 
 $rc = Proc::PID::File->running(%args);
 ok(! $rc, "single instance");
+
 
 ###
 # DESTROY test
