@@ -245,7 +245,7 @@ For help and thank you notes, e-mail the author directly.  To report a bug, subm
 
 The latest version of the tarball, RPM and SRPM may always be found at: F<http://perl.arix.com/>  Additionally the module is available from CPAN.
 
-=head1 LICENCE
+=head1 LICENSE
 
 This utility is free and distributed under GPL, the Gnu Public License.  A copy of this license was included in a file called LICENSE. If for some reason, this file was not included, please see F<http://www.gnu.org/licenses/> to obtain a copy of this license.
 
