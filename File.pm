@@ -174,7 +174,7 @@ sub debug {
 	my $self = shift;
 	my $msg = shift || $_;
 
-	print "> Proc::PID::File - $msg$\"
+	print "> Proc::PID::File - $msg$\ "
 		if $self->{debug};
 	}
 
@@ -186,7 +186,7 @@ sub DESTROY {
     	}
     
     open(PID, $self->{path})
-		|| die qq/Cannot open pid file "$self->{path}": $!\n/
+		|| die qq/Cannot open pid file \"$self->{path}\": $!\n/
         ;
 	my ($pid) = <PID> =~ /^(\d+)/;
     close PID;
