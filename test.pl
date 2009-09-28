@@ -32,8 +32,8 @@ use lib "blib/lib";
 $|++; $\ = "\n";
 
 use Proc::PID::File;
-use Test::Simple tests => 8;
-use threads;
+use Test::Simple tests => 6;
+use Config;
 
 my %args = ( name => "test", dir => ".", debug => $ENV{DEBUG} );
 my $cmd = shift || "";
@@ -46,14 +46,23 @@ if ($cmd eq "--daemon") {
 
 exit() if $cmd eq "--short";
 
-ok(1, 'use Proc::PID::File'); # If we made it this far, we're ok.
-
+###
 # test for thread safety
-Proc::PID::File->running(%args);
-threads->create(sub { })->join();
-sleep(2);
-ok(-f "test.pid", "thread safe");
+###
+if ($Config{usethreads}) {
+    use threads;
+    Proc::PID::File->running(%args);
+    threads->create(sub { })->join();
+    sleep(2);
+    ok(-f "test.pid", "thread safe");
+} else {
+    ok(1, "Skipping Thread Safe Test");
+}
 
+
+###
+# Running Test
+###
 unlink("test.pid") || die $! if -e "test.pid";  # blank slate
 system qq|$^X $0 --daemon > /dev/null 2>&1 &|; sleep 1;
 my $pid = qx/cat test.pid/; chomp $pid;
@@ -61,9 +70,17 @@ my $pid = qx/cat test.pid/; chomp $pid;
 my $rc = Proc::PID::File->running(%args);
 ok($rc, "running");
 
+
+###
+# Verified: real test
+###
 $rc = Proc::PID::File->running(%args, verify => 1);
 ok($rc, "verified: real");
 
+
+###
+# Verified: false test
+###
 # WARNING: the following test takes over the pidfile from the
 # daemon such that he cannot clean it up.  this is as it should be
 # since no one but us should occupy our pidfile 
@@ -71,14 +88,18 @@ ok($rc, "verified: real");
 $rc = Proc::PID::File->running(%args, verify => "falsetest");
 ok(! $rc, "verified: false");
 
+
+###
+# Single Instance test
+###
 sleep 1 while kill 0, $pid;
 
 $rc = Proc::PID::File->running(%args);
 ok(! $rc, "single instance");
 
-# test DESTROY
-
+###
+# DESTROY test
+###
 system qq|$^X $0 --short > /dev/null 2>&1|;
 ok(-f "test.pid", "destroy");
 
-ok(1, "done");
