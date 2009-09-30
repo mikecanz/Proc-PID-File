@@ -39,6 +39,7 @@ my $cmd = shift || "";
 
 if ($cmd eq "--daemon") {
 	print "-- daemon --";
+	$args{verify} = 1;
     die "Already running!" if Proc::PID::File->running(%args);
     sleep(5);
 	print "-- deamon: exiting --";
@@ -49,12 +50,10 @@ exit() if $cmd eq "--short";
 
 my $pid;
 sub rundaemon {
-	unlink("test.pid") || die $! # blank slate
-		if -e "test.pid";
 	my $pipes = $args{debug} =~ /D/ ? "" : "> /dev/null 2>&1";
 	system qq|$^X $0 --daemon $pipes &|;
 	sleep 1;
-	chomp($pid = qx/cat test.pid/);
+	chomp($pid = qx|cat $args{dir}/$args{name}.pid|);
 	}
 
 # - thread-safety test -------------------------------------------------------
@@ -72,6 +71,7 @@ ok(1, "Skipping Thread Safe Test") unless
 
 # - basic run test -----------------------------------------------------------
 
+unlink("test.pid") || die $! if -e "test.pid";
 rundaemon();
 my $rc = Proc::PID::File->running(%args);
 ok($rc, "simple: running");
@@ -112,6 +112,7 @@ ok(-f $c1->{path}, "oo: file touched");
 
 ok(!$c1->alive(), "oo: alive (with current process)");
 
+unlink("test.pid") || die $! if -e "test.pid";
 rundaemon();
 ok($c1->alive(), "oo: alive (with daemon)");
 ok($c1->alive(verify => 1), "oo: alive (verified)");

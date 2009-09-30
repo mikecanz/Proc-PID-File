@@ -248,10 +248,12 @@ sub verify {
     if ($Config::Config{osname} =~ /linux|freebsd/i) {
         my $me = $self->{verify};
         ($me = $0) =~ s|.*/|| if !$me || $me eq "1";
+		my $cols = delete($ENV{'COLUMNS'}); # prevents `ps` from wrapping
         my @ps = split m|$/|, qx/ps -fp $pid/
             || die "ps utility not available: $!";
         s/^\s+// for @ps;   # leading spaces confuse us
 
+		$ENV{'COLUMNS'} = $cols if defined($cols);
         no warnings;    # hate that deprecated @_ thing
         my $n = split(/\s+/, $ps[0]);
         @ps = split /\s+/, $ps[1], $n;
