@@ -28,17 +28,31 @@ Proc::PID::File - a module to manage process id files
   use Proc::PID::File;
   die "Already running!" if Proc::PID::File->running();
 
-For daemonization, something like this is recommended:
+Process that spawn child processes may want to protect
+each separately by using multiple I<pidfiles>.
 
-  Proc::Daemon::Init;
-  my $pf = Proc::PID::File->new(dir => $RUNDIR);
-  die "Already running!" if $pf->alive();
+  my $child1 = Proc::PID::File->new(name => "lock.1");
+  my $child2 = Proc::PID::File->new(name => "lock.2");
+
+which may be checked like this:
+
+  <do-something> if $child1->alive();
+
+and should be released manually:
+
+  $child1->release();
 
 =head1 DESCRIPTION
 
 This Perl module is useful for writers of daemons and other processes that need to tell whether they are already running, in order to prevent multiple process instances.  The module accomplishes this via *nix-style I<pidfiles>, which are files that store a process identifier.
 
+The module provides two interfaces: 1) a simple call, and
+2) an object-oriented interface
+
 =cut
+
+require Exporter;
+@ISA = qw(Exporter);
 
 use strict;
 use vars qw($VERSION $RPM_Requires);
@@ -49,79 +63,178 @@ $RPM_Requires = "procps";
 
 my $RUNDIR = "/var/run";
 my $ME = $0; $ME =~ s|.*/||;
-
-# used to keep non-expiring objects
-# for simple and procedural interfaces
-
 my $self;
 
-# -- Interface ---------------------------------------------------------------
+# -- Simple Interface --------------------------------------------------------
 
-=head1 Module Interface
+=head1 Simple Interface
 
-The interface consists of a single call as indicated in the B<Synopsis> section above.  This approach avoids causing race conditions whereby one instance of a daemon could read the I<pidfile> after a previous instance has read it but before it has had a chance to write to it.
+The simple interface consists of a call as indicated in the first example
+of the B<Synopsis> section above.  This approach avoids causing race
+conditions whereby one instance of a daemon could read the I<pidfile>
+after a previous instance has read it but before it has had a chance
+to write to it.
 
 =head2 running [hash[-ref]]
 
-This method receives an optional hash (or, alternatively, a hash reference) of options, which determines function behaviour.
-
-The returns value is true when the calling process is already running.  Please note that this call must be made *after* daemonisation i.e. subsequent to the call to fork().
-
-The options available include the following:
-
-=over
-
-=item I<dir>
-
-Specifies the directory to place the pid file.  If left unspecified, defaults to F</var/run>.
-
-=item I<name>
-
-Indicates the name of the current process.  When not specified, defaults to I<basename($0)>.
-
-=item I<verify> = 1 | string
-
-This parameter helps prevent the problem described in the WARNING section below.  If set to a string, it will be interpreted as a I<regular expression> and used to search within the name of the running process.  A 1 may also be passed, indicating that the value of I<$0> should be used (stripped of its full path).  If the parameter is not passed, no verification will take place.
-
-Please note that verification will only work for the operating systems listed below and that the os will be auto-sensed.  See also DEPENDENCIES section below.
-
-Supported platforms: Linux, FreeBSD
-
-=item I<debug>
-
-Turns debugging output on.
-
-=back
+The parameter signature for this function is identical to that of the
+I<-E<gt>new()> method described below in the B<OO Interface> section of this document. The method's return value is the same as that of I<-E<gt>alive()>.
 
 =cut
 
 sub running {
     $self = shift->new(@_);
-	my $path = $self->{path};
 
-    local *FH;
-	sysopen(FH, $path, O_RDWR|O_CREAT)
-		|| die qq/Cannot open pid file [$path]: $!\n/;
-	flock(FH, LOCK_EX | LOCK_NB)
-        || die "pidfile $path already locked";
-	my ($pid) = <FH> =~ /^(\d+)/;
+	local *FH;
+	my $pid = $self->read(*FH);
 
 	if ($pid && $pid != $$ && kill(0, $pid)) {
         $self->debug("running: $pid");
-        if ($self->verify($pid)) {
-	        close FH;
-	        return $pid;
-            }
+	    close FH;
+        return $self->verify($pid) ? $pid : 0;
         }
 
-    $self->debug("writing: $$");
-	sysseek  FH, 0, 0;
-	truncate FH, 0;
-	syswrite FH, "$$\n", length("$$\n");
-	close(FH) || die qq/Cannot write pid file "$path": $!\n/;
-
+	$self->write(*FH);
 	return 0;
     }
+
+# -- Object oriented Interface -----------------------------------------------
+
+=head1 OO Interface
+
+The following methods are provided:
+
+=head2 new [hash[-ref]]
+
+This method is used to create an instance object.  It automatically calls the I<-E<gt>file()> method described below and receives the same paramters.  For a listing of valid keys in this hash please refer to the aforementioned method documentation below.
+
+In addition to the above, the following constitute valid keys:
+
+=over
+
+=item I<verify> = 1 | string
+
+This parameter implements the second solution outlined in the WARNING section
+of this document and is used to verify that an existing I<pidfile> correctly
+represents a live process other than the current.  If set to a string, it will
+be interpreted as a I<regular expression> and used to search within the name
+of the running process.  Alternatively, a 1 may be passed, indicating that the
+value of I<$0> should be used (stripped of its full path).  If the parameter
+is not passed, no verification will take place.
+
+Please note that verification will only work for the operating systems
+listed below and that the OS will be auto-sensed.  See also DEPENDENCIES
+section below.
+
+Supported platforms: Linux, FreeBSD
+
+=item I<debug>
+
+Any non-zero value turns debugging output on.  Additionally, if a string
+is passed containing the character B<M>, the module name will be prefixed
+to the debugging output.
+
+=back
+
+=cut
+
+sub new {
+	my $class = shift;
+	my $self = bless({}, $class);
+	%$self = &args;
+	$self->file();	# init file path
+	$self->debug("new(" . join(",", @_) . ")");
+	return $self;
+	}
+
+=head2 file [hash[-ref]]
+
+Use this method to set the path of the I<pidfile>.  The method receives an optional hash (or hash reference) with the keys listed below, from which it makes a path of the format: F<$dir/$name.pid>.
+
+=over
+
+=item I<dir>
+
+Specifies the directory to place the pid file.  If left unspecified,
+defaults to F</var/run>.
+
+=item I<name>
+
+Indicates the name of the current process.  When not specified, defaults
+to I<basename($0)>.
+
+=back
+
+=cut
+
+sub file {
+	my $self = shift;
+	%$self = (%$self, &args);
+	$self->{dir} ||= $RUNDIR;
+	$self->{name} ||= $ME;
+	$self->{path} = sprintf("%s/%s.pid", $self->{dir}, $self->{name});
+	}
+
+=head2 alive
+
+Returns true when the process is already running.  Please note that this
+call must be made *after* daemonisation i.e. subsequent to the call to
+fork(). If the B<verify> flag was set during the instance creation, the
+process id is verified, alternatively the flag may be passed directly
+to this method.
+
+=cut
+
+sub alive {
+	my $self = shift;
+
+	my %args = &args;
+	$self->{verify} = $args{verify} if $args{verify};
+
+	my $pid = $self->read() || "";
+	$self->debug("alive(): $pid");
+
+	if ($pid && $pid != $$ && kill(0, $pid)) {
+        return $self->verify($pid) ? $pid : 0;
+        }
+
+	return 0;
+	}
+
+=head2 touch
+
+Causes for the current process id to be written to the I<pidfile>.
+
+=cut
+
+sub touch {
+	shift->write();
+	}
+
+=head2 release
+
+This method is used to delete the I<pidfile> and is automatically called by DESTROY method.  It should thus be unnecessary to call it directly.
+
+=cut
+
+sub release {
+	my $self = shift;
+	$self->debug("release()");
+	unlink($self->{path}) || warn $!;
+	}
+
+=head2 locktime [hash[-ref]]
+
+This method returns the I<mtime> of the I<pidfile>.
+
+=cut
+
+sub locktime {
+    my $self = shift;
+    return (stat($self->{path}))[10];
+	}
+
+# -- support functionality ---------------------------------------------------
 
 sub verify {
     my ($self, $pid) = @_;
@@ -130,7 +243,8 @@ sub verify {
     eval "use Config";
     die "$@\nCannot use the Config module.  Please install.\n" if $@;
 
-    $self->debug("verifying on: $Config::Config{osname}");
+	my $ret;
+    $self->debug("verify(): OS = $Config::Config{osname}");
     if ($Config::Config{osname} =~ /linux|freebsd/i) {
         my $me = $self->{verify};
         ($me = $0) =~ s|.*/|| if !$me || $me eq "1";
@@ -141,40 +255,67 @@ sub verify {
         no warnings;    # hate that deprecated @_ thing
         my $n = split(/\s+/, $ps[0]);
         @ps = split /\s+/, $ps[1], $n;
-        return scalar grep /$me/, $ps[$n - 1];
+        $ret = $ps[$n - 1] =~ /\Q$me\E/;;
         }
+
+	$self->debug(" - ret: [$ret]");
+	$ret;
     }
 
-# -- support functionality ---------------------------------------------------
+# Returns the process id currently stored in the file set.  If the method
+# is passed a file handle, it will return the value, leaving the file handle
+# locked.  This is useful for atomic operations where the caller needs to
+# write to the file after the read without allowing other dirty writes.
+# 
+# Please note, when passing a file handle, caller is responsible for
+# closing it. Also, file handles must be passed by reference!
 
-sub new {
-	my $class = shift;
-	my $self = bless({}, $class);
-	%$self = &args;
+sub read {
+	my ($self, $fh) = @_;
 
-	$self->file();		# init file path
+	sysopen $fh, $self->{path}, O_RDWR|O_CREAT
+		|| die qq/Cannot open pid file "$self->{path}": $!\n/;
+	flock($fh, LOCK_EX | LOCK_NB)
+        || die qq/pid "$self->{path}" already locked: $!\n/;
+	my ($pid) = <$fh> =~ /^(\d+)/;
+	close $fh if @_ == 1;
 
-	return $self;
+	$self->debug("read(\"$self->{path}\") = " . ($pid || ""));
+	return $pid;
 	}
 
-sub file {
-	my $self = shift;
-	%$self = (%$self, &args);
-	$self->{dir} ||= $RUNDIR;
-	$self->{name} ||= $ME;
-	$self->{path} = sprintf("%s/%s.pid", $self->{dir}, $self->{name});
+# Causes for the current process id to be written to the selected
+# file.  If a file handle it passed, the method assumes it has already
+# been opened, otherwise it opens its own. Please note that file
+# handles must be passed by reference!
+
+sub write {
+	my ($self, $fh) = @_;
+
+	$self->debug("write($$)");
+	if (@_ == 1) {
+		sysopen $fh, $self->{path}, O_RDWR|O_CREAT
+			|| die qq/Cannot open pid file "$self->{path}": $!\n/;
+		flock($fh, LOCK_EX | LOCK_NB)
+        	|| die qq/pid "$self->{path}" already locked: $!\n/;
+		}
+	sysseek  $fh, 0, 0;
+	truncate $fh, 0;
+	syswrite $fh, "$$\n", length("$$\n");
+	close $fh || die qq/Cannot write pid file "$self->{path}": $!\n/;
 	}
 
 sub args {
-	my $opts = shift;
-	!defined($opts) ? () : ref($opts) ? %$opts : ($opts, @_);
+	!defined($_[0]) ? () : ref($_[0]) ? %{$_[0]} : @_;
 	}
 
 sub debug {
 	my $self = shift;
 	my $msg = shift || $_;
 
-	print "> Proc::PID::File - $msg\n"
+	$msg = "> Proc::PID::File - $msg"
+		if $self->{debug} =~ /M/;	# prefix with module name
+	print $msg
 		if $self->{debug};
 	}
 
@@ -185,13 +326,8 @@ sub DESTROY {
         return if threads->tid() != 0;
     	}
     
-    open(PID, $self->{path})
-		|| die qq/Cannot open pid file "$self->{path}": $!\n/
-        ;
-	my ($pid) = <PID> =~ /^(\d+)/;
-    close PID;
-
-	unlink($self->{path}) || warn $!
+	my $pid = $self->read();
+	$self->release()
         if $self->{path} && $pid && $pid == $$;
 	}
 
