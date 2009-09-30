@@ -32,7 +32,7 @@ use Test::Simple tests => 12;
 use Config;
 
 $|++; $\ = "\n";
-my %args = (name => "test", dir => ".", debug => $ENV{DEBUG});
+my %args = (name => "test", dir => ".", debug => $ENV{DEBUG} || "");
 my $cmd = shift || "";
 
 # - deamon -------------------------------------------------------------------

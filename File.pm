@@ -62,7 +62,7 @@ $VERSION = "1.26";
 $RPM_Requires = "procps";
 
 my $RUNDIR = "/var/run";
-my $ME = $0; $ME =~ s|.*/||;
+my ($ME) = $0 =~ m|([^/]+)$|;
 my $self;
 
 # -- Simple Interface --------------------------------------------------------
@@ -143,7 +143,7 @@ sub new {
 	my $self = bless({}, $class);
 	%$self = &args;
 	$self->file();	# init file path
-	$self->debug("new(" . join(",", @_) . ")");
+	$self->{debug} ||= "";
 	return $self;
 	}
 
