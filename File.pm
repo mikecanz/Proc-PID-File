@@ -118,15 +118,16 @@ This parameter implements the second solution outlined in the WARNING section
 of this document and is used to verify that an existing I<pidfile> correctly
 represents a live process other than the current.  If set to a string, it will
 be interpreted as a I<regular expression> and used to search within the name
-of the running process.  Alternatively, a 1 may be passed, indicating that the
-value of I<$0> should be used (stripped of its full path).  If the parameter
-is not passed, no verification will take place.
+of the running process.  Alternatively, a 1 may be passed: For Linux/FreeBSD,
+this indicates that the value of I<$0> will be used (stripped of its full
+path); for Cygwin, I<$^X> (stripped of path and extension) will be used.
 
-Please note that verification will only work for the operating systems
+If the parameter is not passed, no verification will take place.  Please
+note that verification will only work for the operating systems
 listed below and that the OS will be auto-sensed.  See also DEPENDENCIES
 section below.
 
-Supported platforms: Linux, FreeBSD
+Supported platforms: Linux, FreeBSD, Cygwin
 
 =item I<debug>
 
@@ -240,14 +241,17 @@ sub verify {
     my ($self, $pid) = @_;
     return 1 unless $self->{verify};
 
-    eval "use Config";
-    die "$@\nCannot use the Config module.  Please install.\n" if $@;
-
-	my $ret;
-    $self->debug("verify(): OS = $Config::Config{osname}");
-    if ($Config::Config{osname} =~ /linux|freebsd/i) {
+	my $ret = 0;
+    $self->debug("verify(): OS = $^O");
+    if ($^O =~ /linux|freebsd|cygwin/i) {
         my $me = $self->{verify};
-        ($me = $0) =~ s|.*/|| if !$me || $me eq "1";
+		if (!$me || $me eq "1") {
+			$me = $ME;
+			if ($^O eq "cygwin") {
+				$^X =~ m|([^/]+)$|;
+				($me = $1) =~ s/\.exe$//;
+				}
+			}
 		my $cols = delete($ENV{'COLUMNS'}); # prevents `ps` from wrapping
         my @ps = split m|$/|, qx/ps -fp $pid/
             || die "ps utility not available: $!";
@@ -351,7 +355,10 @@ Our gratitude also to Alan Ferrency <alan@pair.com> for fingering the boot-up pr
 
 =head1 DEPENDENCIES
 
-For Linux and FreeBSD, support of the I<verify> option (simple interface) requires the B<ps> utility to be available.  This is typically found in the B<procps> RPM.
+For Linux, FreeBSD and Cygwin, support of the I<verify> option requires
+availability of the B<ps> utility.  For Linux/FreeBSD This is typically
+found in the B<procps> package. Cygwin users need to run version 1.5.20
+or later for this to work.
 
 =head1 WARNING
 

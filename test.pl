@@ -58,7 +58,7 @@ sub rundaemon {
 
 # - thread-safety test -------------------------------------------------------
 
-ok(1, "Skipping Thread Safe Test") unless
+ok(1, "SKIPPED - simple: thread safe") unless
 	$] >= 5.008001
 	&& $Config{"useithreads"}
 	&& eval { 
@@ -76,19 +76,25 @@ rundaemon();
 my $rc = Proc::PID::File->running(%args);
 ok($rc, "simple: running");
 
-# - verified: real test ------------------------------------------------------
+# - verification tests -------------------------------------------------------
 
-$rc = Proc::PID::File->running(%args, verify => 1);
-ok($rc, "simple: verified - real");
+ok(1, "SKIPPED - simple: verified (real)") unless
+	$^O =~ /linux|freebsd|cygwin/i
+	&& eval {
+		$rc = Proc::PID::File->running(%args, verify => 1);
+		ok($rc, "simple: verified (real)");
+		};
 
-# - verified: false test -----------------------------------------------------
+ok(1, "SKIPPED - simple: verified (false)") unless
+	$^O =~ /linux|freebsd|cygwin/i
+	&& eval {
+		# WARNING: the following test takes over the pidfile from
+		# the daemon such that he cannot clean it up.  this is as
+		# it should be since no one but us should occupy our pidfile 
 
-# WARNING: the following test takes over the pidfile from the
-# daemon such that he cannot clean it up.  this is as it should be
-# since no one but us should occupy our pidfile 
-
-$rc = Proc::PID::File->running(%args, verify => "falsetest");
-ok(! $rc, "simple: verified - false");
+		$rc = Proc::PID::File->running(%args, verify => "falsetest");
+		ok(! $rc, "simple: verified (false)");
+		};
 
 # - single instance test -----------------------------------------------------
 
@@ -115,7 +121,12 @@ ok(!$c1->alive(), "oo: alive (with current process)");
 unlink("test.pid") || die $! if -e "test.pid";
 rundaemon();
 ok($c1->alive(), "oo: alive (with daemon)");
-ok($c1->alive(verify => 1), "oo: alive (verified)");
+
+ok(1, "SKIPPED - oo: alive (verified)") unless
+	$^O =~ /linux|freebsd|cygwin/i
+	&& eval {
+		ok($c1->alive(verify => 1), "oo: alive (verified)");
+		};
 
 $c1->release();
 ok(! -f $c1->{path}, "oo: released");
