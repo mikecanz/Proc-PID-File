@@ -130,3 +130,11 @@ ok(1, "SKIPPED - oo: alive (verified)") unless
 
 $c1->release();
 ok(! -f $c1->{path}, "oo: released");
+
+# - wait for daemon to exit --------------------------------------------------
+
+$\ = undef;
+print "waiting for daemon death";
+sleep 1, print "." while kill 0, $pid;
+print "\ndone\n";
+exit 0;
