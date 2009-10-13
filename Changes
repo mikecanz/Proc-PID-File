@@ -1,23 +1,23 @@
 Revision history for Perl extension Proc::PID::File.
 
 1.26 2009/10/01 01:35:02 - Erick Calder <e@arix.com>
-	- implemented fixes for Cygwin support of PID verification.
-	  Thanks to JDHedden for the patch.  see:
-	  https://rt.cpan.org/Ticket/Display.html?id=50078
-	- fixed problem with low $COLUMNS values in certain platforms
-	  (ps output wraps) - thanks to JDHedden for the patch.  see:
-	  https://rt.cpan.org/Ticket/Display.html?id=15015
-	- defaulted values to avoid:
-	  Use of uninitialized value in pattern match (m//)
-	- implemented taint checking patch at:
-	  https://rt.cpan.org/Public/Bug/Display.html?id=6347
-	  thanks to JDHedden for the patch
-	- Reinstated OO interface to solve Clinton Gormley's need for
-	  maintaining multiple PID files, one for each child process
-	- Documentation: added example of specifying a directory for the
-	  pidfile, as per enquiry by Milko Krachounov; added a newline for
-	  debug() function as per David Hawthorne so avoid run-on sentences
-	  in output
+    - implemented fixes for Cygwin support of PID verification.
+      Thanks to JDHedden for the patch.  see:
+      https://rt.cpan.org/Ticket/Display.html?id=50078
+    - fixed problem with low $COLUMNS values in certain platforms
+      (ps output wraps) - thanks to JDHedden for the patch.  see:
+      https://rt.cpan.org/Ticket/Display.html?id=15015
+    - defaulted values to avoid:
+      Use of uninitialized value in pattern match (m//)
+    - implemented taint checking patch at:
+      https://rt.cpan.org/Public/Bug/Display.html?id=6347
+      thanks to JDHedden for the patch
+    - Reinstated OO interface to solve Clinton Gormley's need for
+      maintaining multiple PID files, one for each child process
+    - Documentation: added example of specifying a directory for the
+      pidfile, as per enquiry by Milko Krachounov; added a newline for
+      debug() function as per David Hawthorne so avoid run-on sentences
+      in output
 
 1.25 2009/06/29 17:41:00 - Mike Canzoneri <mikecanzoneri@gmail.com>
     - Added support for threads.
